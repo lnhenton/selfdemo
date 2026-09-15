@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🎊 幸运大抽奖</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at 30% 20%, #c62828, #7a0e0e 80%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+            overflow: hidden;
+            position: relative;
+            padding: 12px;
+        }
+
+        /* ---------- 特效层 ---------- */
+        .fireworks-canvas, .balloon-layer, .sparkle-layer,
+        .confetti-layer, .glow-layer {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+        }
+        .fireworks-canvas { z-index: 1; }
+        .balloon-layer   { z-index: 3; }
+        .sparkle-layer   { z-index: 4; }
+        .confetti-layer  { z-index: 5; }
+        .glow-layer      { z-index: 6; background: radial-gradient(circle at 50% 50%, rgba(255,220,100,0.12) 0%, transparent 70%); mix-blend-mode: overlay; }
+
+        /* ---------- 抽奖卡片 ---------- */
+        .card {
+            position: relative;
+            z-index: 20;
+            width: 100%;
+            max-width: 360px;
+            background: linear-gradient(145deg, #fff9e6, #ffe6b3);
+            border-radius: 48px 48px 36px 36px;
+            padding: 28px 24px 32px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5), 0 0 0 6px #f3c26b, 0 0 0 12px #e6a017, 0 0 0 16px #b36b0a;
+            text-align: center;
+            border: 1px solid #ffd966;
+            animation: cardPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes cardPop {
+            0%   { transform: scale(0.85); opacity: 0; }
+            100% { transform: scale(1);    opacity: 1; }
+        }
+        .card::before {
+            content: "福";
+            position: absolute;
+            top: -22px; left: 50%;
+            transform: translateX(-50%);
+            background: #d32f2f;
+            color: #ffd966;
+            font-size: 38px; font-weight: 900;
+            font-family: 'STKaiti','KaiTi','华文楷体',cursive;
+            width: 72px; height: 72px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 6px 0 #7a0e0e, 0 10px 18px rgba(0,0,0,0.3);
+            border: 3px solid #ffc107;
+            z-index: 25;
+            text-shadow: 2px 2px 0 #b71c1c;
+        }
+
+        .title {
+            margin-top: 32px;
+            font-size: 30px; font-weight: 900;
+            color: #c62828;
+            text-shadow: 3px 3px 0 #ffd966, 0 0 12px #ffb300;
+            letter-spacing: 3px;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .title span { font-size: 28px; }
+
+        /* ---------- 抽奖舞台 ---------- */
+        .lottery-stage {
+            margin: 18px 0 6px;
+            min-height: 220px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 18px;
+        }
+
+        .mystery-box {
+            width: 150px; height: 150px;
+            background: radial-gradient(circle at 30% 30%, #ffca28, #e65100);
+            border-radius: 32px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 70px;
+            box-shadow: 0 12px 0 #b36b0a, 0 20px 30px rgba(0,0,0,0.35);
+            border: 4px solid #ffd966;
+            animation: floatBox 2.5s infinite ease-in-out;
+            transition: all 0.3s;
+            cursor: pointer;
+            user-select: none;
+        }
+        @keyframes floatBox {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50%      { transform: translateY(-12px) rotate(2deg); }
+        }
+        .mystery-box:hover {
+            transform: scale(1.05) rotate(-2deg);
+            box-shadow: 0 12px 0 #b36b0a, 0 25px 40px rgba(255,180,0,0.5);
+        }
+        .mystery-box:active {
+            transform: scale(0.96) translateY(6px);
+            box-shadow: 0 6px 0 #b36b0a, 0 14px 20px rgba(0,0,0,0.3);
+        }
+
+        .draw-btn {
+            background: #d32f2f;
+            border: 3px solid #ffb300;
+            color: #ffd966;
+            font-size: 24px; font-weight: 900;
+            padding: 16px 40px;
+            border-radius: 60px;
+            cursor: pointer;
+            box-shadow: 0 8px 0 #7a0e0e, 0 10px 20px rgba(0,0,0,0.35);
+            transition: all 0.08s;
+            letter-spacing: 6px;
+            text-shadow: 2px 2px 0 #7a0e0e;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            animation: pulseBtn 1.8s infinite;
+        }
+        @keyframes pulseBtn {
+            0%, 100% { transform: scale(1);    box-shadow: 0 8px 0 #7a0e0e, 0 10px 20px rgba(0,0,0,0.35); }
+            50%      { transform: scale(1.03); box-shadow: 0 8px 0 #7a0e0e, 0 14px 28px rgba(255,180,0,0.5); }
+        }
+        .draw-btn:active {
+            transform: translateY(6px) scale(0.98);
+            box-shadow: 0 2px 0 #7a0e0e, 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        /* ---------- 结果区 ---------- */
+        .result-area {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            animation: resultPop 0.55s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes resultPop {
+            0%   { transform: scale(0.5); opacity: 0; }
+            60%  { transform: scale(1.08); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .result-label {
+            font-size: 16px; font-weight: 700;
+            color: #9e5b00; letter-spacing: 3px;
+        }
+        .result-amount {
+            font-size: 64px; font-weight: 900;
+            color: #b71c1c;
+            text-shadow: 3px 3px 0 #ffd966, 0 0 20px #ffb300;
+            line-height: 1.1;
+            padding: 6px 12px;
+        }
+        .result-amount::before {
+            content: "¥";
+            font-size: 36px; margin-right: 2px;
+            color: #d84315;
+        }
+        .result-note {
+            font-size: 15px; font-weight: 600;
+            color: #b55a00;
+            background: #fff3d1;
+            padding: 6px 20px;
+            border-radius: 40px;
+            box-shadow: inset 0 1px 6px #ffe6a3, 0 3px 0 #c18a3a;
+            border: 1px solid #f7cf7c;
+            letter-spacing: 1px;
+        }
+
+        .hint {
+            font-size: 15px; font-weight: 700;
+            color: #b55a00;
+            background: #fff3d1;
+            display: inline-block;
+            padding: 8px 26px;
+            border-radius: 40px;
+            margin: 8px 0 2px;
+            box-shadow: inset 0 1px 6px #ffe6a3, 0 4px 0 #c18a3a;
+            letter-spacing: 2px;
+            border: 1px solid #f7cf7c;
+        }
+
+        /* ---------- 特效元素 ---------- */
+        .balloon {
+            position: absolute;
+            width: 48px; height: 58px;
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            filter: drop-shadow(4px 10px 8px rgba(0,0,0,0.3));
+            animation: floatUp 9s infinite ease-in-out;
+            opacity: 0.85;
+            pointer-events: none;
+        }
+        .balloon::after {
+            content:''; position:absolute;
+            bottom:-8px; left:50%;
+            width:2px; height:22px;
+            background:#8b5a2b;
+            transform:translateX(-50%);
+            border-radius:1px;
+        }
+        .balloon::before {
+            content:''; position:absolute;
+            top:12px; left:10px;
+            width:8px; height:12px;
+            background:rgba(255,255,255,0.6);
+            border-radius:50%;
+            transform:rotate(25deg);
+        }
+        @keyframes floatUp {
+            0%   { transform: translateY(0) rotate(0deg); }
+            50%  { transform: translateY(-80px) rotate(6deg); }
+            100% { transform: translateY(-200px) rotate(-6deg); opacity: 0; }
+        }
+
+        .sparkle {
+            position: absolute;
+            width: 8px; height: 8px;
+            background: #ffdf6b;
+            border-radius: 50%;
+            box-shadow: 0 0 18px 6px #ffbb00;
+            animation: twinkle 2s infinite alternate;
+            pointer-events: none;
+        }
+        @keyframes twinkle {
+            0%   { opacity: 0.3; transform: scale(0.8); }
+            100% { opacity: 1;   transform: scale(1.5); box-shadow: 0 0 30px 10px #ffaa33; }
+        }
+
+        .confetti {
+            position: absolute;
+            width: 12px; height: 12px;
+            opacity: 0.9;
+            animation: fallRotate 6s infinite linear;
+            border-radius: 3px;
+            pointer-events: none;
+        }
+        @keyframes fallRotate {
+            0%   { transform: translateY(-20vh) rotate(0deg);   opacity: 1; }
+            100% { transform: translateY(120vh) rotate(720deg); opacity: 0.2; }
+        }
+
+        .glow-dot {
+            position: absolute;
+            width: 20px; height: 20px;
+            background: radial-gradient(circle, #ffffaa 0%, #ffaa00 70%, transparent 100%);
+            border-radius: 50%;
+            filter: blur(2px);
+            animation: pulseGlow 3s infinite alternate;
+            pointer-events: none;
+        }
+        @keyframes pulseGlow {
+            0%   { opacity: 0.3; transform: scale(0.5); }
+            100% { opacity: 1;   transform: scale(1.8); }
+        }
+
+        canvas.fireworks-canvas {
+            display: block;
+            width: 100%; height: 100%;
+            background: transparent;
+        }
+
+        @media (max-width: 400px) {
+            .card { padding: 22px 16px 26px; }
+            .title { font-size: 26px; }
+            .mystery-box { width: 130px; height: 130px; font-size: 60px; }
+            .draw-btn { font-size: 20px; padding: 14px 30px; letter-spacing: 4px; }
+            .result-amount { font-size: 52px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ========== 特效层 ========== -->
+<canvas id="fireworksCanvas" class="fireworks-canvas"></canvas>
+<div class="balloon-layer" id="balloonLayer"></div>
+<div class="sparkle-layer" id="sparkleLayer"></div>
+<div class="confetti-layer" id="confettiLayer"></div>
+<div class="glow-layer" id="glowLayer"></div>
+
+<!-- ========== 抽奖卡片 ========== -->
+<div class="card" id="lotteryCard">
+    <div class="title">
+        <span>🎉</span> 幸运抽奖 <span>🎉</span>
+    </div>
+
+    <div class="lottery-stage" id="lotteryStage">
+        <div id="beforeDraw">
+            <div class="mystery-box" id="mysteryBox">🎁</div>
+            <button class="draw-btn" id="drawBtn">
+                <span>✨</span> 点击抽奖 <span>✨</span>
+            </button>
+        </div>
+
+        <div class="result-area" id="resultArea">
+            <div class="result-label">🎊 恭喜你抽中 🎊</div>
+            <div class="result-amount" id="resultAmount">0</div>
+            <div class="result-note" id="resultNote">好运连连 · 喜气洋洋</div>
+        </div>
+    </div>
+
+    <div class="hint" id="hintText">
+        ⭐ 点击按钮 · 惊喜揭晓 ⭐
+    </div>
+</div>
+
+<script>
+    (function(){
+        // ============================================================
+        // ⭐ 每次刷新页面，随机生成 1~200 的金额
+        // ============================================================
+        const randomAmount = Math.floor(Math.random() * 200) + 1; // 1~200
+
+        const BACKEND_CONFIG = {
+            amount: randomAmount,
+            note: "好运连连 · 喜气洋洋"
+        };
+
+        function getValidAmount() {
+            let amt = Number(BACKEND_CONFIG.amount);
+            if (isNaN(amt) || !Number.isInteger(amt)) amt = 168;
+            if (amt < 1) amt = 1;
+            if (amt > 200) amt = 200;
+            return amt;
+        }
+
+        // ============================================================
+        // 抽奖逻辑
+        // ============================================================
+        const beforeDraw   = document.getElementById('beforeDraw');
+        const resultArea   = document.getElementById('resultArea');
+        const resultAmount = document.getElementById('resultAmount');
+        const resultNote   = document.getElementById('resultNote');
+        const drawBtn      = document.getElementById('drawBtn');
+        const mysteryBox   = document.getElementById('mysteryBox');
+        const hintText     = document.getElementById('hintText');
+
+        let isDrawing = false;
+
+        function startDraw() {
+            if (isDrawing) return;
+            isDrawing = true;
+
+            drawBtn.disabled = true;
+            drawBtn.style.opacity = '0.7';
+            drawBtn.style.animation = 'none';
+            drawBtn.innerHTML = '<span>⏳</span> 抽奖中... <span>⏳</span>';
+
+            mysteryBox.style.animation = 'shakeBox 0.5s infinite';
+            if (!document.getElementById('shakeStyle')) {
+                const s = document.createElement('style');
+                s.id = 'shakeStyle';
+                s.textContent = `@keyframes shakeBox {
+                    0%{transform:rotate(0deg) scale(1);}
+                    25%{transform:rotate(-8deg) scale(1.05);}
+                    75%{transform:rotate(8deg) scale(1.05);}
+                    100%{transform:rotate(0deg) scale(1);}
+                }`;
+                document.head.appendChild(s);
+            }
+
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    createFireworkExplosion(
+                        Math.random() * width,
+                        Math.random() * height * 0.6 + height * 0.1
+                    );
+                }, i * 250);
+            }
+
+            setTimeout(() => {
+                beforeDraw.style.display = 'none';
+
+                const amt = getValidAmount();
+                resultAmount.textContent = amt;
+                resultNote.textContent = BACKEND_CONFIG.note || "好运连连 · 喜气洋洋";
+                resultArea.style.display = 'flex';
+                hintText.innerHTML = '🎊 恭喜中奖 🎊';
+
+                mysteryBox.style.animation = '';
+                if (document.getElementById('shakeStyle')) {
+                    document.getElementById('shakeStyle').remove();
+                }
+
+                for (let i = 0; i < 8; i++) {
+                    setTimeout(() => {
+                        createFireworkExplosion(
+                            Math.random() * width,
+                            Math.random() * height * 0.7 + height * 0.1
+                        );
+                    }, i * 120);
+                }
+                for (let i = 0; i < 30; i++) {
+                    setTimeout(() => createConfettiBurst(), i * 40);
+                }
+                createBurstSparkles(25);
+
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+                isDrawing = false;
+            }, 1800);
+        }
+
+        drawBtn.addEventListener('click', startDraw);
+        mysteryBox.addEventListener('click', startDraw);
+
+        // ============================================================
+        // 特效系统
+        // ============================================================
+        const canvas = document.getElementById('fireworksCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        function resizeCanvas() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class FireworkParticle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y;
+                this.color = color;
+                this.velX = (Math.random() - 0.5) * 6;
+                this.velY = (Math.random() - 0.5) * 6 - 2;
+                this.alpha = 1;
+                this.decay = 0.015 + Math.random() * 0.02;
+                this.size = 2 + Math.random() * 4;
+            }
+            update() {
+                this.x += this.velX;
+                this.y += this.velY;
+                this.velY += 0.08;
+                this.velX *= 0.99;
+                this.velY *= 0.99;
+                this.alpha -= this.decay;
+                return this.alpha > 0;
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 18;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        let particles = [];
+
+        function createFireworkExplosion(x, y) {
+            const colors = ['#FFD966','#FF4D4D','#FFB347','#FF6B6B','#FFE066','#FF8C42','#FF3B3B','#F9E076'];
+            const count = 40 + Math.floor(Math.random() * 30);
+            for (let i = 0; i < count; i++) {
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                particles.push(new FireworkParticle(x, y, color));
+            }
+        }
+
+        function drawFireworks() {
+            if (!ctx) return;
+            ctx.clearRect(0, 0, width, height);
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                const alive = p.update();
+                if (!alive) { particles.splice(i, 1); continue; }
+                p.draw();
+            }
+            requestAnimationFrame(drawFireworks);
+        }
+
+        drawFireworks();
+
+        function autoFireworks() {
+            if (document.hidden) { setTimeout(autoFireworks, 2000); return; }
+            const x = Math.random() * width;
+            const y = Math.random() * height * 0.6 + height * 0.1;
+            createFireworkExplosion(x, y);
+            setTimeout(autoFireworks, 800 + Math.random() * 1200);
+        }
+        autoFireworks();
+
+        const balloonLayer = document.getElementById('balloonLayer');
+        const balloonColors = ['#FF4D6D','#FFB347','#FFD966','#FF6B6B','#FF8C42','#F9E076','#E63946','#F4A261','#FFB3C6','#FFC8DD'];
+
+        function createBalloon() {
+            const balloon = document.createElement('div');
+            balloon.className = 'balloon';
+            const color = balloonColors[Math.floor(Math.random() * balloonColors.length)];
+            balloon.style.backgroundColor = color;
+            balloon.style.left = Math.random() * 100 + '%';
+            balloon.style.bottom = '-10vh';
+            const duration = 7 + Math.random() * 6;
+            balloon.style.animationDuration = duration + 's';
+            balloon.style.animationDelay = Math.random() * 5 + 's';
+            const scale = 0.7 + Math.random() * 0.6;
+            balloon.style.transform = `scale(${scale})`;
+            balloon.style.borderRadius = `${40+Math.random()*20}% ${40+Math.random()*20}% ${50+Math.random()*20}% ${50+Math.random()*20}% / ${50+Math.random()*20}% ${50+Math.random()*20}% ${40+Math.random()*20}% ${40+Math.random()*20}%`;
+            balloonLayer.appendChild(balloon);
+            setTimeout(() => { if (balloon.parentNode) balloon.remove(); }, duration * 1000 + 5000);
+        }
+        setInterval(createBalloon, 900);
+        for (let i = 0; i < 8; i++) setTimeout(createBalloon, i * 200);
+
+        const sparkleLayer = document.getElementById('sparkleLayer');
+
+        function createSparkle() {
+            const sparkle = document.createElement('div');
+            sparkle.className = 'sparkle';
+            sparkle.style.left = Math.random() * 100 + '%';
+            sparkle.style.top = Math.random() * 100 + '%';
+            const size = 4 + Math.random() * 12;
+            sparkle.style.width = size + 'px';
+            sparkle.style.height = size + 'px';
+            sparkle.style.animationDelay = Math.random() * 3 + 's';
+            sparkle.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+            const colors = ['#FFD966','#FFB347','#FF6B6B','#FFF5B0','#FFAA33'];
+            sparkle.style.background = colors[Math.floor(Math.random() * colors.length)];
+            sparkle.style.boxShadow = `0 0 20px 5px ${sparkle.style.background}`;
+            sparkleLayer.appendChild(sparkle);
+            if (sparkleLayer.children.length > 70) sparkleLayer.removeChild(sparkleLayer.firstChild);
+        }
+        setInterval(createSparkle, 300);
+        for (let i = 0; i < 30; i++) setTimeout(createSparkle, i * 50);
+
+        function createBurstSparkles(count = 10) {
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    const sparkle = document.createElement('div');
+                    sparkle.className = 'sparkle';
+                    sparkle.style.left = 20 + Math.random() * 60 + '%';
+                    sparkle.style.top = 30 + Math.random() * 40 + '%';
+                    const size = 6 + Math.random() * 16;
+                    sparkle.style.width = size + 'px';
+                    sparkle.style.height = size + 'px';
+                    sparkle.style.animationDuration = '0.8s';
+                    sparkle.style.background = '#FFE066';
+                    sparkle.style.boxShadow = '0 0 30px 10px #FFB347';
+                    sparkleLayer.appendChild(sparkle);
+                    setTimeout(() => sparkle.remove(), 1000);
+                }, i * 30);
+            }
+        }
+
+        const confettiLayer = document.getElementById('confettiLayer');
+        const confettiColors = ['#FF4D6D','#FFD966','#4CAF50','#42A5F5','#FF8C42','#E63946','#F4A261','#FFB3C6','#B71C1C','#FFC107'];
+
+        function createConfetti() {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            if (Math.random() > 0.5) confetti.style.borderRadius = '50%';
+            const color = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+            confetti.style.backgroundColor = color;
+            const size = 6 + Math.random() * 14;
+            confetti.style.width = size + 'px';
+            confetti.style.height = size + 'px';
+            confetti.style.left = Math.random() * 100 + '%';
+            confetti.style.top = '-10vh';
+            const duration = 4 + Math.random() * 6;
+            confetti.style.animationDuration = duration + 's';
+            confetti.style.animationDelay = Math.random() * 5 + 's';
+            confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+            confettiLayer.appendChild(confetti);
+            setTimeout(() => { if (confetti.parentNode) confetti.remove(); }, duration * 1000 + 3000);
+        }
+
+        function createConfettiBurst() {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            if (Math.random() > 0.5) confetti.style.borderRadius = '50%';
+            const color = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+            confetti.style.backgroundColor = color;
+            const size = 8 + Math.random() * 16;
+            confetti.style.width = size + 'px';
+            confetti.style.height = size + 'px';
+            confetti.style.left = Math.random() * 100 + '%';
+            confetti.style.top = '-10vh';
+            confetti.style.animationDuration = (2 + Math.random() * 3) + 's';
+            confetti.style.animationDelay = '0s';
+            confettiLayer.appendChild(confetti);
+            setTimeout(() => { if (confetti.parentNode) confetti.remove(); }, 5000);
+        }
+
+        setInterval(createConfetti, 400);
+        for (let i = 0; i < 20; i++) setTimeout(createConfetti, i * 80);
+
+        const glowLayer = document.getElementById('glowLayer');
+        function createGlowDot() {
+            const dot = document.createElement('div');
+            dot.className = 'glow-dot';
+            dot.style.left = Math.random() * 100 + '%';
+            dot.style.top = Math.random() * 100 + '%';
+            const size = 15 + Math.random() * 40;
+            dot.style.width = size + 'px';
+            dot.style.height = size + 'px';
+            dot.style.animationDuration = (2 + Math.random() * 3) + 's';
+            dot.style.animationDelay = Math.random() * 2 + 's';
+            glowLayer.appendChild(dot);
+            if (glowLayer.children.length > 30) glowLayer.removeChild(glowLayer.firstChild);
+        }
+        for (let i = 0; i < 12; i++) setTimeout(createGlowDot, i * 100);
+        setInterval(createGlowDot, 1200);
+
+        window.addEventListener('click', (e) => {
+            if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.card')) return;
+            createFireworkExplosion(e.clientX, e.clientY);
+        });
+
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                createFireworkExplosion(width * 0.3, height * 0.35);
+                createFireworkExplosion(width * 0.7, height * 0.5);
+                createFireworkExplosion(width * 0.5, height * 0.2);
+            }, 300);
+        });
+    })();
+</script>
+</body>
+</html>
